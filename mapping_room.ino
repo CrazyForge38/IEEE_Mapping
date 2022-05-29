@@ -8,13 +8,14 @@ int roomTallyTop[] = {5,6,7,8};  //if its a constant does that mean only the siz
 const int topAddr = 22; //define the starting address in EEPROM for the 
 const int botAddr = 0;//top and bottom floor
 
+String grabInput();
 void storeData(); //stores the data in the EEprom
 void populateTally(); //Populate the arrays with data stored in the EEprom
 // i left the commented printlns inside the save/populate methods bc there is a way to turn certain
 // code "on/off" for debugging that I will eventaully add for future purposes
 
 const byte ROWS = 4; //Defines the number of rows and columns
-const byte COLS = 4; 
+const byte COLS = 4;
 
 char hexaKeys[ROWS][COLS] = { //keyboard selection
   {'1','2','3','A'},
@@ -28,21 +29,50 @@ byte colPins[COLS] = {5,4,3,2};
 
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
- void setup() {
+void setup() {
   Serial.begin(9600);//sets up the serial monitor so we can monitor Serial code
   Serial.println("booting up...");
 }
 
 void loop() 
-  {/////////////////////////////////////////////////////////////////////////////////////////
-
+  {//////////////////////////////////////////////////////////////////
+    grabInput();
   }/////////////////////////////////////
 
- 
+String grabInput()//returns the first 3 inputs after 3 inputs and '#' has been pressed
+{
+  static String usrInput = ""; 
+  String sendUsrInput = "";
+  char customKey = customKeypad.getKey();//creates a customKeypad objet called customKey
+
+  if(customKey)
+  {
+    //Serial.print("This is the input: "); Serial.println(customKey);
+    if(usrInput.length() < 3)//we need 3 inputs before we send and we can make this a const 
+    {
+      usrInput.concat(customKey); //https://docs.arduino.cc/built-in-examples/strings/StringAppendOperator
+      //Serial.print("This is the String: "); Serial.println(usrInput);
+      //Serial.print("This is the lenght of the string: "); Serial.println(usrInput.length());
+    }  
+
+    if(usrInput.length() >= 3 && customKey == '#')
+    {
+      //Serial.print("the current press:"); Serial.println(customKey);
+      sendUsrInput = usrInput;
+      //Serial.print("collected data: "); Serial.println(sendUsrInput);
+      usrInput = "";
+      return sendUsrInput;
+    }
+    grabInput(); //if we have 3 inputs and the user did not hit enter, we will wait
+  }
+}
+
+  
+
 //https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 //sizeof() on a array will give of the total number of bytes it has and sizeof() on a 
 //individual element of that array will give of the number of bytes for index.
-/therefore total-bytes/bytes-per= total number of indexes
+//therefore total-bytes/bytes-per= total number of indexes
 void storeData()
   {
     for(int i = 0, j = botAddr; i < sizeof(roomTallyBottom) / sizeof(roomTallyBottom[0]) ; i++, j++)
