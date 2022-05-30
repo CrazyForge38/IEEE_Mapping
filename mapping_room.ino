@@ -37,6 +37,11 @@ void setup() {
 void loop() 
   {//////////////////////////////////////////////////////////////////
     grabInput();
+    Serial.println("this is a test");
+    grabInput();
+    Serial.println("second test");
+    //delay(7000);
+    
   }/////////////////////////////////////
 
 String grabInput()//returns the first 3 inputs after 3 inputs and '#' has been pressed
@@ -47,24 +52,25 @@ String grabInput()//returns the first 3 inputs after 3 inputs and '#' has been p
 
   if(customKey)
   {
-    //Serial.print("This is the input: "); Serial.println(customKey);
+    Serial.print("This is the input: "); Serial.println(customKey);
     if(usrInput.length() < 3)//we need 3 inputs before we send and we can make this a const 
     {
       usrInput.concat(customKey); //https://docs.arduino.cc/built-in-examples/strings/StringAppendOperator
-      //Serial.print("This is the String: "); Serial.println(usrInput);
-      //Serial.print("This is the lenght of the string: "); Serial.println(usrInput.length());
+      Serial.print("This is the String: "); Serial.println(usrInput);
+      Serial.print("This is the lenght of the string: "); Serial.println(usrInput.length());
     }  
 
     if(usrInput.length() >= 3 && customKey == '#')
     {
-      //Serial.print("the current press:"); Serial.println(customKey);
+      Serial.print("the current press:"); Serial.println(customKey);
       sendUsrInput = usrInput;
-      //Serial.print("collected data: "); Serial.println(sendUsrInput);
+      Serial.print("collected data: "); Serial.println(sendUsrInput);
       usrInput = "";
       return sendUsrInput;
     }
-    grabInput(); //if we have 3 inputs and the user did not hit enter, we will wait
   }
+  delay(80); //we need a delay or else the program wont run as planned
+  grabInput();//if we have 3 inputs and the user did not hit enter, we will wait
 }
 
   
