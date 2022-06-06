@@ -1,13 +1,21 @@
 #include <EEPROM.h>
 #include <Keypad.h> //https://playground.arduino.cc/Code/Keypad/
 
-const int accessCode = 3141; //access code for tally. no hacking!
+const int ACCESS_CODE = 314; //access code for tally. no hacking!
+
+int topFloorInfo[][] = {
+                   {}, //room number
+                   {} //tally count
+                       };
 
 int roomTallyBottom[] = {1,2,3,4}; //depends on the number of rooms
 int roomTallyTop[] = {5,6,7,8};  //if its a constant does that mean only the size is fixed?
 const int topAddr = 22; //define the starting address in EEPROM for the 
 const int botAddr = 0;//top and bottom floor
 
+void inputDestination();
+int showStats();
+int lightRoom();
 String grabInput();
 void storeData(); //stores the data in the EEprom
 void populateTally(); //Populate the arrays with data stored in the EEprom
@@ -16,6 +24,9 @@ void populateTally(); //Populate the arrays with data stored in the EEprom
 
 const byte ROWS = 4; //Defines the number of rows and columns
 const byte COLS = 4;
+
+
+char waitForKey();
 
 char hexaKeys[ROWS][COLS] = { //keyboard selection
   {'1','2','3','A'},
@@ -36,50 +47,88 @@ void setup() {
 
 void loop() 
   {//////////////////////////////////////////////////////////////////
-    grabInput();
-    Serial.println("this is a test");
-    grabInput();
-    Serial.println("second test");
-    //delay(7000);
-    
+    Serial.println("starting");
+    inputDestination(grabInput());
   }/////////////////////////////////////
 
-String grabInput()//returns the first 3 inputs after 3 inputs and '#' has been pressed
+String grabInput() //I could add a hit '' to enter the value
 {
-  static String usrInput = ""; 
-  String sendUsrInput = "";
-  char customKey = customKeypad.getKey();//creates a customKeypad objet called customKey
-
-  if(customKey)
+  char char_ ;
+  String usrInput = "";
+  for (int i = 0; i < 3; i++)
   {
-    Serial.print("This is the input: "); Serial.println(customKey);
-    if(usrInput.length() < 3)//we need 3 inputs before we send and we can make this a const 
-    {
-      usrInput.concat(customKey); //https://docs.arduino.cc/built-in-examples/strings/StringAppendOperator
-      Serial.print("This is the String: "); Serial.println(usrInput);
-      Serial.print("This is the lenght of the string: "); Serial.println(usrInput.length());
-    }  
-
-    if(usrInput.length() >= 3 && customKey == '#')
-    {
-      Serial.print("the current press:"); Serial.println(customKey);
-      sendUsrInput = usrInput;
-      Serial.print("collected data: "); Serial.println(sendUsrInput);
-      usrInput = "";
-      return sendUsrInput;
-    }
+    char_ = customKeypad.waitForKey();
+    Serial.println(char_);
+    usrInput.concat(char_);
   }
-  delay(80); //we need a delay or else the program wont run as planned
-  grabInput();//if we have 3 inputs and the user did not hit enter, we will wait
+  return usrInput;
 }
 
+void inputDestination(String input)
+{
+  Serial.println("destination called");
+  int argument =  input.toInt();
+  Serial.println(arg);
+  boolean access = false;
   
+  if(argument == ACCESS_CODE)
+  {
+    Serial.println("code accepted");
+    access = true;  
+  }
+  if(access == true)
+  {
+    showStats();
+  }
+  else
+  {
+    Serial.println("code no accepted");
+    lightRoom();
+  }  
+}
+
+int showStats()
+{
+  Serial.println("Enter a room");
+  int roomSelection =  grabInput().toInt();
+  Serial.println("showing stats");
+  Serial.println(roomSelection);
+  if(roomExistance(roomSelection) == true)
+  {
+    Serial.println("room exist");
+    printTally(roomSelection);
+    Serial.println("printed");
+  }
+  else
+  {
+   Serial.println("room does not exist"); 
+  }
+  
+  return roomSelection;
+}
+
+boolean roomExistance(int selection)
+{
+  return true;
+}
+
+void printTally(int roomSelection)
+{
+  Serial.print("printing: ");
+  Serial.println(roomSelection);
+}
+
+int lightRoom()
+{
+  return 0;  
+}
 
 //https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 //sizeof() on a array will give of the total number of bytes it has and sizeof() on a 
 //individual element of that array will give of the number of bytes for index.
 //therefore total-bytes/bytes-per= total number of indexes
-void storeData()
+
+void storeData()//I could make this a 2d array but too lake atm
   {
     for(int i = 0, j = botAddr; i < sizeof(roomTallyBottom) / sizeof(roomTallyBottom[0]) ; i++, j++)
     {
