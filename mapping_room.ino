@@ -1,21 +1,28 @@
 #include <EEPROM.h>
 #include <Keypad.h> //https://playground.arduino.cc/Code/Keypad/
 
-const int ACCESS_CODE = 314; //access code for tally. no hacking!
+static int top_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
+               {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count need to move this so it doesnt reset maybe
+             }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
 
-int topFloorInfo[][] = {
-                   {}, //room number
-                   {} //tally count
-                       };
+static int bot_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
+               {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count need to move this so it doesnt reset maybe
+             }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
+
+const int SIZE_OF_TOP_FLOOR = sizeof(top_Floor_Structure[0])/sizeof(top_Floor_Structure[0][0]);
+const int SIZE_OF_BOT_FLOOR = sizeof(bot_Floor_Structure[0])/sizeof(bot_Floor_Structure[0][0]);
+const int ACCESS_CODE = 314; //access code for tally. no hacking!
 
 int roomTallyBottom[] = {1,2,3,4}; //depends on the number of rooms
 int roomTallyTop[] = {5,6,7,8};  //if its a constant does that mean only the size is fixed?
 const int topAddr = 22; //define the starting address in EEPROM for the 
 const int botAddr = 0;//top and bottom floor
 
-void inputDestination();
-int showStats();
-int lightRoom();
+boolean inputDestination();
+//int showStats();
+//int lightRoom();
 String grabInput();
 void storeData(); //stores the data in the EEprom
 void populateTally(); //Populate the arrays with data stored in the EEprom
@@ -25,8 +32,7 @@ void populateTally(); //Populate the arrays with data stored in the EEprom
 const byte ROWS = 4; //Defines the number of rows and columns
 const byte COLS = 4;
 
-
-char waitForKey();
+char waitForKey(); //////set up////////////
 
 char hexaKeys[ROWS][COLS] = { //keyboard selection
   {'1','2','3','A'},
@@ -47,8 +53,32 @@ void setup() {
 
 void loop() 
   {//////////////////////////////////////////////////////////////////
+    String usrInput = ""; //do we have to do this for a string
+    boolean handling = false;
+    boolean room_Does_Exist = false;
+    
     Serial.println("starting");
-    inputDestination(grabInput());
+    usrInput = grabInput(); //do we want to wait for the user to hit input?
+    Serial.println(usrInput);
+
+    handling = inputDestination(usrInput);
+    Serial.print("0 is for access: ");
+    Serial.println(handling); //prints 1 if access code
+    if(handling == true)//true is when the access code was accepted
+      {//not the access code
+        room_Does_Exist = roomExistance(usrInput.toInt());
+        Serial.print(room_Does_Exist);
+        Serial.println(" : 1 for it does exist");
+        //incrementTally();
+        //lightRoom();
+      }
+      else//is the access code
+      {
+        ////usrInput = grabInput();
+        //room_Does_Exist = roomExistance(usrInput);
+        //showStats();
+      }
+
   }/////////////////////////////////////
 
 String grabInput() //I could add a hit '' to enter the value
@@ -64,63 +94,46 @@ String grabInput() //I could add a hit '' to enter the value
   return usrInput;
 }
 
-void inputDestination(String input)
+boolean inputDestination(String input)// 1 == true and 0 == false
 {
   Serial.println("destination called");
   int argument =  input.toInt();
-  Serial.println(arg);
-  boolean access = false;
+  Serial.println(argument);
+  boolean destination = true;
   
-  if(argument == ACCESS_CODE)
+  if(argument == ACCESS_CODE)// get ride of a if by making the lightroom() default
   {
     Serial.println("code accepted");
-    access = true;  
+    destination = false;  
   }
-  if(access == true)
-  {
-    showStats();
-  }
-  else
-  {
-    Serial.println("code no accepted");
-    lightRoom();
-  }  
+
+  return destination;
 }
 
-int showStats()
+boolean roomExistance(int room_Num)
 {
-  Serial.println("Enter a room");
-  int roomSelection =  grabInput().toInt();
-  Serial.println("showing stats");
-  Serial.println(roomSelection);
-  if(roomExistance(roomSelection) == true)
+  boolean found = false;
+  int floor_Num;
+
+  if(room_Num/100 == 1)
   {
-    Serial.println("room exist");
-    printTally(roomSelection);
-    Serial.println("printed");
-  }
-  else
-  {
-   Serial.println("room does not exist"); 
-  }
-  
-  return roomSelection;
-}
-
-boolean roomExistance(int selection)
-{
-  return true;
-}
-
-void printTally(int roomSelection)
-{
-  Serial.print("printing: ");
-  Serial.println(roomSelection);
-}
-
-int lightRoom()
-{
-  return 0;  
+    for(int i = 0; i < SIZE_OF_TOP_FLOOR; i++)
+    {
+      if(room_Num == top_Floor_Structure[0][i])
+      {
+        found = true;  
+      }
+    }  
+  } else {
+      for(int i = 0; i < SIZE_OF_BOT_FLOOR; i++)
+      {
+        if(room_Num == bot_Floor_Structure[0][i])
+        {
+          found = true;  
+        }
+      }  
+    }
+  return found;
 }
 
 //https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
