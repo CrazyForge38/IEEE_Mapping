@@ -12,34 +12,29 @@ static int bot_Floor_Structure[2][23] = {// initilazie the array only for the fi
                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count
              }; // I can get rid of the static bc of populate and store methods
 
-const int SIZE_OF_TOP_FLOOR = sizeof(top_Floor_Structure[0])/sizeof(top_Floor_Structure[0][0]);
-const int SIZE_OF_BOT_FLOOR = sizeof(bot_Floor_Structure[0])/sizeof(bot_Floor_Structure[0][0]);
-const int ACCESS_CODE = 314; //access code for tally. no hacking!
-
-const int topAddr = SIZE_OF_TOP_FLOOR; //define the starting address in EEPROM for the 
-const int botAddr = 0;//top and bottom floor
-
-boolean inputDestination();
-String grabInput();
-void storeData(); //stores the data in the EEprom
-void populateTally(); //Populate the arrays with data stored in the EEprom
-
 const byte ROWS = 4; //Defines the number of rows and columns
 const byte COLS = 4;
-
-char waitForKey(); //////set up////////////
-
+char waitForKey(); //sets up the waitforkey for the keypad
 char hexaKeys[ROWS][COLS] = { //keyboard selection
   {'1','2','3','A'},
   {'4','5','6','B'},
   {'7','8','9','C'},
   {'*','0','#','D'}
  };
-
 byte rowPins[ROWS] = {9,8,7,6};//define the connections from the arduino
 byte colPins[COLS] = {5,4,3,2};
-
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+const int SIZE_OF_TOP_FLOOR = sizeof(top_Floor_Structure[0])/sizeof(top_Floor_Structure[0][0]);
+const int SIZE_OF_BOT_FLOOR = sizeof(bot_Floor_Structure[0])/sizeof(bot_Floor_Structure[0][0]);
+const int ACCESS_CODE = 314; //access code for tally. no hacking!
+const int topAddr = SIZE_OF_TOP_FLOOR; //define the starting address in EEPROM for the top floor
+const int botAddr = 0;//address of the bottom floor for the EEPROM
+
+//boolean inputDestination(); //I thought I needed to define the function if it occurs after the main function
+//String grabInput();
+//void storeData(); //stores the data in the EEprom
+//void populateTally(); //Populate the arrays with data stored in the EEprom
 
 void setup() {
   Serial.begin(9600);//sets up the serial monitor so we can monitor Serial code
@@ -48,30 +43,23 @@ void setup() {
 
 void loop() 
   {//////////////////////////////////////////////////////////////////
-    String usrInput = ""; //do we have to do this for a string
+    String usrInput = ""; //the return of grabInput() is a string
     boolean handling = false;
     boolean room_Does_Exist = false;
     int floor_Num = 0;
     int room_Num = 0;
     
     Serial.println("starting");
-    usrInput = grabInput(); //do we want to wait for the user to hit input?
+    usrInput = grabInput(); //do we want to wait for the user to hit enter?
     floor_Num = usrInput.toInt()/100;
     room_Num = usrInput.toInt();
-    handling = inputDestination(usrInput); //false for access for and true for room
-
-    if (handling == 0)
+    handling = inputDestination(usrInput); //false for access code and true for the room does exist
+    
+    if (handling == 0)//accepted access code 0 == false
     {
-      Serial.println("access code");
-      usrInput = grabInput(); //do we want to wait for the user to hit input?
-      floor_Num = usrInput.toInt()/100;
-      room_Num = usrInput.toInt();
-      if (roomExistance(room_Num) == true)
-      {
-        printTally(room_Num, floor_Num);  
-      }
+      usrReadout();
     }
-    else
+    else //not access code therefore it a room number
     {
       if (roomExistance(room_Num) ==  true)
       {
@@ -84,10 +72,20 @@ void loop()
         Serial.println("room does not exist");
       } 
     }
-
-    Serial.println("This is the end of the run");
-
+    Serial.println("This is the end of this run");
   }/////////////////////////////////////
+
+void usrReadout()//selecting the room to read the tally count
+{
+  Serial.println("access code");
+  String usrInput = grabInput(); //do we want to wait for the user to hit input?
+  int floor_Num = usrInput.toInt()/100;
+  int room_Num = usrInput.toInt();
+  if (roomExistance(room_Num) == true)
+    {
+      printTally(room_Num, floor_Num);  
+    }
+}
 
 void printTally(int room_Num, int floor_Num)
 {
@@ -123,6 +121,7 @@ void incrementTally(int room_Num, int floor_Num)
         if(room_Num == bot_Floor_Structure[0][i])
         {
           bot_Floor_Structure[1][i] = bot_Floor_Structure[1][i]+1;
+          Serial.println(bot_Floor_Structure[1][i]);
         }  
       } 
     break;
