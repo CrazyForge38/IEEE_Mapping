@@ -1,33 +1,28 @@
-#include <EEPROM.h>
+#include <EEPROM.h> //arduino library
 #include <Keypad.h> //https://playground.arduino.cc/Code/Keypad/
 
 static int top_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
                {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
-               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count need to move this so it doesnt reset maybe
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count 
              }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
+                ////https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 
 static int bot_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
                {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
-               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count need to move this so it doesnt reset maybe
-             }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count
+             }; // I can get rid of the static bc of populate and store methods
 
 const int SIZE_OF_TOP_FLOOR = sizeof(top_Floor_Structure[0])/sizeof(top_Floor_Structure[0][0]);
 const int SIZE_OF_BOT_FLOOR = sizeof(bot_Floor_Structure[0])/sizeof(bot_Floor_Structure[0][0]);
 const int ACCESS_CODE = 314; //access code for tally. no hacking!
 
-int roomTallyBottom[] = {1,2,3,4}; //depends on the number of rooms
-int roomTallyTop[] = {5,6,7,8};  //if its a constant does that mean only the size is fixed?
-const int topAddr = 22; //define the starting address in EEPROM for the 
+const int topAddr = SIZE_OF_TOP_FLOOR; //define the starting address in EEPROM for the 
 const int botAddr = 0;//top and bottom floor
 
 boolean inputDestination();
-//int showStats();
-//int lightRoom();
 String grabInput();
 void storeData(); //stores the data in the EEprom
 void populateTally(); //Populate the arrays with data stored in the EEprom
-// i left the commented printlns inside the save/populate methods bc there is a way to turn certain
-// code "on/off" for debugging that I will eventaully add for future purposes
 
 const byte ROWS = 4; //Defines the number of rows and columns
 const byte COLS = 4;
@@ -56,30 +51,93 @@ void loop()
     String usrInput = ""; //do we have to do this for a string
     boolean handling = false;
     boolean room_Does_Exist = false;
+    int floor_Num = 0;
+    int room_Num = 0;
     
     Serial.println("starting");
     usrInput = grabInput(); //do we want to wait for the user to hit input?
-    Serial.println(usrInput);
+    floor_Num = usrInput.toInt()/100;
+    room_Num = usrInput.toInt();
+    handling = inputDestination(usrInput); //false for access for and true for room
 
-    handling = inputDestination(usrInput);
-    Serial.print("0 is for access: ");
-    Serial.println(handling); //prints 1 if access code
-    if(handling == true)//true is when the access code was accepted
-      {//not the access code
-        room_Does_Exist = roomExistance(usrInput.toInt());
-        Serial.print(room_Does_Exist);
-        Serial.println(" : 1 for it does exist");
-        //incrementTally();
-        //lightRoom();
-      }
-      else//is the access code
+    if (handling == 0)
+    {
+      Serial.println("access code");
+      usrInput = grabInput(); //do we want to wait for the user to hit input?
+      floor_Num = usrInput.toInt()/100;
+      room_Num = usrInput.toInt();
+      if (roomExistance(room_Num) == true)
       {
-        ////usrInput = grabInput();
-        //room_Does_Exist = roomExistance(usrInput);
-        //showStats();
+        printTally(room_Num, floor_Num);  
       }
+    }
+    else
+    {
+      if (roomExistance(room_Num) ==  true)
+      {
+        Serial.println("the room does exist");
+        incrementTally(room_Num, floor_Num);
+        //lightRoom(room_Num);
+      } 
+      else 
+      {
+        Serial.println("room does not exist");
+      } 
+    }
+
+    Serial.println("This is the end of the run");
 
   }/////////////////////////////////////
+
+void printTally(int room_Num, int floor_Num)
+{
+  if(floor_Num == 1)
+  {
+    for (int i = 0; i < SIZE_OF_BOT_FLOOR; i++)
+    {
+      if (room_Num == bot_Floor_Structure[0][i])
+      {
+        Serial.println(bot_Floor_Structure[1][i]);  
+      }  
+    }  
+  }
+  else
+  {
+    for (int i = 0; i < SIZE_OF_TOP_FLOOR; i++)
+    {
+      if (room_Num == top_Floor_Structure[0][i])
+      {
+        Serial.println(top_Floor_Structure[1][i]);  
+      }  
+    } 
+  }
+  Serial.println("printed tally");
+}
+
+void incrementTally(int room_Num, int floor_Num)
+{
+  switch (floor_Num){
+    case 1: 
+      for (int i =0; i < SIZE_OF_BOT_FLOOR; i++)
+      {
+        if(room_Num == bot_Floor_Structure[0][i])
+        {
+          bot_Floor_Structure[1][i] = bot_Floor_Structure[1][i]+1;
+        }  
+      } 
+    break;
+    
+    case 2:
+      for (int i =0; i < SIZE_OF_TOP_FLOOR; i++)
+        {
+          if(room_Num == top_Floor_Structure[0][i])
+          {
+            top_Floor_Structure[1][i] = top_Floor_Structure[1][i]+1;
+          }  
+        } 
+    break;
+  }// I need a defaul, we will look into this later
+}
 
 String grabInput() //I could add a hit '' to enter the value
 {
@@ -98,7 +156,6 @@ boolean inputDestination(String input)// 1 == true and 0 == false
 {
   Serial.println("destination called");
   int argument =  input.toInt();
-  Serial.println(argument);
   boolean destination = true;
   
   if(argument == ACCESS_CODE)// get ride of a if by making the lightroom() default
@@ -136,43 +193,26 @@ boolean roomExistance(int room_Num)
   return found;
 }
 
-//https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
-//sizeof() on a array will give of the total number of bytes it has and sizeof() on a 
-//individual element of that array will give of the number of bytes for index.
-//therefore total-bytes/bytes-per= total number of indexes
-
-void storeData()//I could make this a 2d array but too lake atm
+void storeData()//I could make this a 2d array but too late atm
   {
-    for(int i = 0, j = botAddr; i < sizeof(roomTallyBottom) / sizeof(roomTallyBottom[0]) ; i++, j++)
+    for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
     {
-      //Serial.print(i);
-      //Serial.print(roomTallyBottom[i]);
-      EEPROM.write(j, roomTallyBottom[i]);  
+      EEPROM.write(j, bot_Floor_Structure[1][i]);  
     }
-    //Serial.println();
-    for(int i = 0, j = topAddr; i < (sizeof(roomTallyTop) / sizeof(roomTallyTop[0])) ; i++, j++)
+    for(int i = 0, j = topAddr; i < SIZE_OF_TOP_FLOOR ; i++, j++)
     {
-      //Serial.print(i);
-      //Serial.print(roomTallyTop[i]);
-      EEPROM.write(j, roomTallyTop[i]); 
+      EEPROM.write(j, top_Floor_Structure[1][i]); 
     }
-    //Serial.println();
   }
 
 void populateTally() //when the prom is started, we need to fill in the data
 {
-    for(int i = botAddr; i < (sizeof( roomTallyBottom) / sizeof(roomTallyBottom[0])); i++)
+    for(int i = botAddr; i < SIZE_OF_BOT_FLOOR ; i++)
     {
-      //Serial.print(i);
-      roomTallyBottom[i] = EEPROM.read(i); 
-      //Serial.print(roomTallyBottom[i]); 
+      bot_Floor_Structure[1][i] = EEPROM.read(i);  
     }
-    //Serial.println();
-    for(int i = topAddr, j = 0; j < (sizeof(roomTallyTop) / sizeof(roomTallyTop[0])) ; i++, j++)
+    for(int i = topAddr, j = 0; j < SIZE_OF_TOP_FLOOR ; i++, j++)
     {
-      //Serial.print(j);
-      roomTallyTop[j] = EEPROM.read(i); 
-      //Serial.print(roomTallyTop[j]); 
+      top_Floor_Structure[1][j] = EEPROM.read(i); 
     }
-    //Serial.println();
 }
