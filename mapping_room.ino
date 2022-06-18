@@ -39,6 +39,10 @@ const int botAddr = 0;//address of the bottom floor for the EEPROM
 void setup() {
   Serial.begin(9600);//sets up the serial monitor so we can monitor Serial code
   Serial.println("booting up...");
+
+  //RESET_EEPROM(); //Call this method, comment it out after, and then run the program for inital implementation
+  
+  populateTally();
 }
 
 void loop() 
@@ -72,8 +76,21 @@ void loop()
         Serial.println("room does not exist");
       } 
     }
+    storeData();
     Serial.println("This is the end of this run");
   }/////////////////////////////////////
+
+void RESET_EEPROM()
+{
+  for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
+    {//i is the index incrementer and j is the starting address
+      EEPROM.write(j, 0);  
+    }
+    for(int i = 0, j = topAddr; i < SIZE_OF_TOP_FLOOR ; i++, j++)
+    {
+      EEPROM.write(j, 0); 
+    }
+}
 
 void usrReadout()//selecting the room to read the tally count
 {
@@ -195,11 +212,11 @@ boolean roomExistance(int room_Num)
 void storeData()//I could make this a 2d array but too late atm
   {
     for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
-    {
+    {//i is the index incrementer and j is the starting address
       EEPROM.write(j, bot_Floor_Structure[1][i]);  
     }
     for(int i = 0, j = topAddr; i < SIZE_OF_TOP_FLOOR ; i++, j++)
-    {
+    {//i is the index incrementer and j is the starting address
       EEPROM.write(j, top_Floor_Structure[1][i]); 
     }
   }
