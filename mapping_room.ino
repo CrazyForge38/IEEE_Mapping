@@ -1,5 +1,10 @@
 #include <EEPROM.h> //arduino library
 #include <Keypad.h> //https://playground.arduino.cc/Code/Keypad/
+#define dataPin A2 // we first start by giving the name of our signals to better 
+#define latchPin A1 // refence then later on. Now we use the GPIO location to know  
+#define clockPin A0 // where the signals are coming out of the microcontroler 
+// the link below will explain in detial how #define works
+//https://www.arduino.cc/reference/en/language/structure/further-syntax/define/
 
 static int top_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
                {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
@@ -39,12 +44,16 @@ const int botAddr = 0;//address of the bottom floor for the EEPROM
 void setup() {
   Serial.begin(9600);//sets up the serial monitor so we can monitor Serial code
   Serial.println("booting up...");
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);
+  INIT_MAX7219();
 
   //RESET_EEPROM(); //Call this method, comment it out after, and then run the program for inital implementation
   
   populateTally();
 }
-
+//////////////////////////////////////////////////////////
 void loop() 
   {//////////////////////////////////////////////////////////////////
     String usrInput = ""; //the return of grabInput() is a string
@@ -52,6 +61,8 @@ void loop()
     boolean room_Does_Exist = false;
     int floor_Num = 0;
     int room_Num = 0;
+
+    segment_Sweep();
     
     Serial.println("starting");
     usrInput = grabInput(); //do we want to wait for the user to hit enter?
@@ -79,7 +90,82 @@ void loop()
     storeData();
     Serial.println("This is the end of this run");
   }/////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 
+void max7219_Interface()
+{
+  byte address, bit_Select;
+  byte max7219_Address[2][8] = {
+                         {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x09}, //row number
+                         {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x08} //LED bit to light up
+                         };  
+}
+
+void segment_Sweep(){
+  for(byte Address = 0x01;Address<=0x04;Address++)
+  {//loop from address 1 to address 4, digits 0 through 3
+    for(byte Command = 0x01; Command<=0x80 && Command != 0x00;Command*=2) // after Command reaches 128, the next *=2 will cause and over flow and make command = 0x00
+    {//loop through all segments
+      writeMAX7219(latchPin,clockPin,dataPin,Address,Command);
+      delay(200);
+    }
+    writeMAX7219(latchPin,clockPin,dataPin,Address,0x00); //clears the last digit
+  }
+
+      writeMAX7219(latchPin,clockPin,dataPin,0x01,0x80);
+
+  delay(20000);
+  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x0C);
+  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x0B);
+  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x0D);
+  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x0E);
+  delay(1500);
+  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x0F); //clears all bits
+  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x0F); //for digit 0-3 / 1-4
+  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x0F);
+  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x0F);
+  while(true)
+  {
+    writeMAX7219(latchPin,clockPin,dataPin,0x01,0x06);
+    writeMAX7219(latchPin,clockPin,dataPin,0x02,0x4F);
+    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x4F);
+    writeMAX7219(latchPin,clockPin,dataPin,0x04,0x4F);
+  }
+}
+///////////////////////////////////////////////////////////////////////
+void INIT_MAX7219(){
+  writeMAX7219(latchPin,clockPin,dataPin,0x0C,0x00);//Shutdown mode while setting up config.
+  writeMAX7219(latchPin,clockPin,dataPin,0x0A,0x04);//Midrange Brightness Mode
+  writeMAX7219(latchPin,clockPin,dataPin,0x0B,0x03);//scan only digits 0-3 i.e the ones we use
+  writeMAX7219(latchPin,clockPin,dataPin,0x09,0x00);//No decode for all digits
+  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x00);//Write BLANK to digit 3
+  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x00);//Write BLANK to digit 2
+  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x00);//Write BLANK to digit 1
+  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x00);//Write BLANK to digit 0
+  writeMAX7219(latchPin,clockPin,dataPin,0x05,0x00);//Write BLANK to digit 3
+  writeMAX7219(latchPin,clockPin,dataPin,0x06,0x00);//Write BLANK to digit 2
+  writeMAX7219(latchPin,clockPin,dataPin,0x07,0x00);//Write BLANK to digit 1
+  writeMAX7219(latchPin,clockPin,dataPin,0x08,0x00);//Write BLANK to digit 0
+  writeMAX7219(latchPin,clockPin,dataPin,0x0C,0x01);//Normal mode
+  }
+/////////////////////////////////////////////////////////////////////////////////////
+void writeMAX7219(int LATCH,int CLOCK,int DATA,byte Address,byte Command){ //could we get ruf og LATCH and Clock bc they are global? 
+  //only one thing uses it at a time, even with threading.. i think
+  digitalWrite(LATCH, LOW);//the chip admits data when latch is set to low
+  digitalWrite(CLOCK, LOW);//the chip stores data on the rising clock edge
+  //https://www.arduino.cc/reference/en/language/functions/digital-io/digitalwrite/
+  //shiftOut(dataPin, clockPin, bitOrder, value)
+  //https://www.arduino.cc/reference/en/language/functions/advanced-io/shiftout/
+  shiftOut(DATA, CLOCK, MSBFIRST, Address);
+  shiftOut(DATA, CLOCK, MSBFIRST, Command);
+  //Data bits are labeled D0–D15 
+  //(Table 1). D8–D11 contain the register address.
+  //D0–D7 contain the data, and D12–D15 are “don’t care”
+  //bits. The first received is D15, the most significant bit
+  //(MSB). https://datasheets.maximintegrated.com/en/ds/MAX7219-MAX7221.pdf
+  digitalWrite(LATCH, HIGH);//the chip stores data when latch rises
+}
+//////////////////////////////////////////////////////////////////////////////////
 void RESET_EEPROM()
 {
   for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
@@ -91,7 +177,7 @@ void RESET_EEPROM()
       EEPROM.write(j, 0); 
     }
 }
-
+////////////////////////////////////////////////////////////////////////
 void usrReadout()//selecting the room to read the tally count
 {
   Serial.println("access code");
@@ -103,7 +189,7 @@ void usrReadout()//selecting the room to read the tally count
       printTally(room_Num, floor_Num);  
     }
 }
-
+////////////////////////////////////////////////////////////////////
 void printTally(int room_Num, int floor_Num)
 {
   if(floor_Num == 1)
@@ -128,7 +214,7 @@ void printTally(int room_Num, int floor_Num)
   }
   Serial.println("printed tally");
 }
-
+/////////////////////////////////////////////////////////////////////
 void incrementTally(int room_Num, int floor_Num)
 {
   switch (floor_Num){
@@ -154,7 +240,7 @@ void incrementTally(int room_Num, int floor_Num)
     break;
   }// I need a defaul, we will look into this later
 }
-
+///////////////////////////////////////////////////////////////////
 String grabInput() //I could add a hit '' to enter the value
 {
   char char_ ;
@@ -167,7 +253,7 @@ String grabInput() //I could add a hit '' to enter the value
   }
   return usrInput;
 }
-
+////////////////////////////////////////////////////////////////////////
 boolean inputDestination(String input)// 1 == true and 0 == false
 {
   Serial.println("destination called");
@@ -182,7 +268,7 @@ boolean inputDestination(String input)// 1 == true and 0 == false
 
   return destination;
 }
-
+///////////////////////////////////////////////////////////
 boolean roomExistance(int room_Num)
 {
   boolean found = false;
@@ -208,7 +294,7 @@ boolean roomExistance(int room_Num)
     }
   return found;
 }
-
+////////////////////////////////////////////////////////////////////
 void storeData()//I could make this a 2d array but too late atm
   {
     for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
@@ -220,7 +306,7 @@ void storeData()//I could make this a 2d array but too late atm
       EEPROM.write(j, top_Floor_Structure[1][i]); 
     }
   }
-
+////////////////////////////////////////////////////////////////////////////////
 void populateTally() //when the prom is started, we need to fill in the data
 {
     for(int i = botAddr; i < SIZE_OF_BOT_FLOOR ; i++)
