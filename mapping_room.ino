@@ -6,15 +6,19 @@
 // the link below will explain in detial how #define works
 //https://www.arduino.cc/reference/en/language/structure/further-syntax/define/
 
-static int top_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
-               {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
-               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count 
+///I hate to do this but Its easier as a global rn
+static int index_Num = 0;
+///
+
+static int top_Floor_Structure[2][21] = {// initilazie the array only for the first run and can change throughout the program
+               {204, 203, 202, 201, 555, 240, 241, 241, 238, 237, 234, 000, 000, 205, 214, 333, 444, 666, 000, 000, 000}, //room number
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count 
              }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
                 ////https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 
-static int bot_Floor_Structure[2][23] = {// initilazie the array only for the first run and can change throughout the program
-               {102, 109, 110, 125, 126, 128, 130, 132, 133, 136, 137, 139, 140, 145, 150, 154, 155, 156, 157, 158, 159, 160, 161}, //room number
-               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0} //tally count
+static int bot_Floor_Structure[2][38] = {// initilazie the array only for the first run and can change throughout the program
+               {109, 119, 102, 100, 155, 110, 158, 158, 000, 000, 000, 000, 000, 000, 000, 156, 125, 126, 130, 128, 555, 444, 160, 159, 000, 137, 666, 140, 150, 154, 155, 132, 133, 666, 136, 139, 000, 000}, //room number
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count
              }; // I can get rid of the static bc of populate and store methods
 
 const byte ROWS = 4; //Defines the number of rows and columns
@@ -61,8 +65,8 @@ void loop()
     boolean room_Does_Exist = false;
     int floor_Num = 0;
     int room_Num = 0;
-
-    segment_Sweep();
+    //writeMAX7219(latchPin,clockPin,dataPin,0x06,0x01);
+    //segment_Sweep();
     
     Serial.println("starting");
     usrInput = grabInput(); //do we want to wait for the user to hit enter?
@@ -80,7 +84,8 @@ void loop()
       {
         Serial.println("the room does exist");
         incrementTally(room_Num, floor_Num);
-        //lightRoom(room_Num);
+        Serial.println(index_Num);
+        max7219_Interface(floor_Num, index_Num);
       } 
       else 
       {
@@ -92,17 +97,47 @@ void loop()
   }/////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
-void max7219_Interface()
+void max7219_Interface(int floor_Num, int index_Num)
 {
-  byte address, bit_Select;
-  byte max7219_Address[2][8] = {
-                         {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x09}, //row number
-                         {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x08} //LED bit to light up
+  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x00);//Write BLANK to digit 3
+  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x00);//Write BLANK to digit 2
+  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x00);//Write BLANK to digit 1
+  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x00);//Write BLANK to digit 0
+  writeMAX7219(latchPin,clockPin,dataPin,0x05,0x00);//Write BLANK to digit 3
+  writeMAX7219(latchPin,clockPin,dataPin,0x06,0x00);//Write BLANK to digit 2
+  writeMAX7219(latchPin,clockPin,dataPin,0x07,0x00);//Write BLANK to digit 1
+  writeMAX7219(latchPin,clockPin,dataPin,0x08,0x00);//Write BLANK to digit 0
+  
+  byte max7219_Top_Floor[2][21] = {
+               {0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x07,0x07,0x07,0x07,0x07,0x08,0x08,0x08,0x08,0x80,0x08,0x08,0x08},//Address
+               {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80}//command
                          };  
+  byte max7219_Bot_Floor[2][38] = {
+               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x05,0x05,0x05,0x05,0x05,0x05,0x05,},//Address
+               {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x20,0x40}//command
+                       }; 
+  Serial.println("max info:"); 
+  Serial.println();
+
+  if(floor_Num == 1)
+  {
+    writeMAX7219(latchPin,clockPin,dataPin,max7219_Bot_Floor[0][index_Num],max7219_Bot_Floor[1][index_Num]);
+    //writeMAX7219(latchPin,clockPin,dataPin,0x01,0x08);  
+  }
+  else
+  {
+      Serial.println(index_Num);
+  Serial.println(max7219_Top_Floor[0][index_Num]);
+  Serial.println(max7219_Top_Floor[1][index_Num], HEX);
+    writeMAX7219(latchPin,clockPin,dataPin,max7219_Top_Floor[0][index_Num],max7219_Top_Floor[1][index_Num]);
+    //writeMAX7219(latchPin,clockPin,dataPin,max7219_Top_Floor[0][index_Num],max7219_Top_Floor[1][index_Num]);
+  }
+
+
 }
 
 void segment_Sweep(){
-  for(byte Address = 0x01;Address<=0x04;Address++)
+  for(byte Address = 0x01;Address<=0x04 ;Address++)
   {//loop from address 1 to address 4, digits 0 through 3
     for(byte Command = 0x01; Command<=0x80 && Command != 0x00;Command*=2) // after Command reaches 128, the next *=2 will cause and over flow and make command = 0x00
     {//loop through all segments
@@ -235,6 +270,7 @@ void incrementTally(int room_Num, int floor_Num)
           if(room_Num == top_Floor_Structure[0][i])
           {
             top_Floor_Structure[1][i] = top_Floor_Structure[1][i]+1;
+            Serial.println(top_Floor_Structure[1][i]);
           }  
         } 
     break;
@@ -274,12 +310,13 @@ boolean roomExistance(int room_Num)
   boolean found = false;
   int floor_Num;
 
-  if(room_Num/100 == 1)
+  if(room_Num/100 == 2)
   {
     for(int i = 0; i < SIZE_OF_TOP_FLOOR; i++)
     {
       if(room_Num == top_Floor_Structure[0][i])
       {
+        index_Num = i;
         found = true;  
       }
     }  
@@ -288,6 +325,7 @@ boolean roomExistance(int room_Num)
       {
         if(room_Num == bot_Floor_Structure[0][i])
         {
+          index_Num = i;
           found = true;  
         }
       }  
