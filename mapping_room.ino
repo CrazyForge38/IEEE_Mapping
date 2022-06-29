@@ -6,19 +6,19 @@
 // the link below will explain in detial how #define works
 //https://www.arduino.cc/reference/en/language/structure/further-syntax/define/
 
-///I hate to do this but Its easier as a global rn
+///I hate to do this but Its easier as a global rn if i doont want to run through a n lenght for loop..
 static int index_Num = 0;
 ///
 
-static int top_Floor_Structure[2][21] = {// initilazie the array only for the first run and can change throughout the program
-               {204, 203, 202, 201, 555, 240, 241, 241, 238, 237, 234, 000, 000, 205, 214, 333, 444, 666, 000, 000, 000}, //room number
-               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count 
+static int top_Floor_Structure[2][33] = {// initilazie the array only for the first run and can change throughout the program
+               {204, 203, 202, 201, 555, 240, 241, 242,   238, 239, 237, 221, 223, 226, 231, 233, 234, 236,     205, 214, 333, 444, 666, 220, 222, 224, 225, 227, 228, 229, 230, 232, 235}, //room number
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count 
              }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
                 ////https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 
-static int bot_Floor_Structure[2][38] = {// initilazie the array only for the first run and can change throughout the program
-               {109, 119, 102, 100, 155, 110, 158, 158, 000, 000, 000, 000, 000, 000, 000, 156, 125, 126, 130, 128, 555, 444, 160, 159, 000, 137, 666, 140, 150, 154, 155, 132, 133, 666, 136, 139, 000, 000}, //room number
-               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count
+static int bot_Floor_Structure[2][72] = {// initilazie the array only for the first run and can change throughout the program
+               {119, 119, 102, 101, 103, 555, 161, 162, 158, 158,        124,123,122,121,120,117,116,115,114,113,112,111,110,109,108,107,106,105,104,163,164,165,166,167,168,169,170,171,172,173,174,175, 156,      125, 126, 130, 128, 555, 444, 160, 159,        101, 137, 666, 140, 150, 154, 155,       132, 133, 555, 136, 139, 145, 146, 147, 148, 149, 151, 152, 153}, //room number
+               {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count
              }; // I can get rid of the static bc of populate and store methods
 
 const byte ROWS = 4; //Defines the number of rows and columns
@@ -85,36 +85,32 @@ void loop()
         Serial.println("the room does exist");
         incrementTally(room_Num, floor_Num);
         Serial.println(index_Num);
-        max7219_Interface(floor_Num, index_Num);
+        max7219_Interface(floor_Num, index_Num, room_Num);
       } 
       else 
       {
         Serial.println("room does not exist");
       } 
     }
-    storeData();
+    //storeData();
     Serial.println("This is the end of this run");
   }/////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
-void max7219_Interface(int floor_Num, int index_Num)
+void max7219_Interface(int floor_Num, int index_Num, int room_Num)
 {
-  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x00);//Write BLANK to digit 3
-  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x00);//Write BLANK to digit 2
-  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x00);//Write BLANK to digit 1
-  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x00);//Write BLANK to digit 0
-  writeMAX7219(latchPin,clockPin,dataPin,0x05,0x00);//Write BLANK to digit 3
-  writeMAX7219(latchPin,clockPin,dataPin,0x06,0x00);//Write BLANK to digit 2
-  writeMAX7219(latchPin,clockPin,dataPin,0x07,0x00);//Write BLANK to digit 1
-  writeMAX7219(latchPin,clockPin,dataPin,0x08,0x00);//Write BLANK to digit 0
+  for (int i = 0; i <= 8; i++)
+  {
+    writeMAX7219(latchPin,clockPin,dataPin,i,0x00);//Write BLANK to all digits
+  }
   
-  byte max7219_Top_Floor[2][21] = {
-               {0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x07,0x07,0x07,0x07,0x07,0x08,0x08,0x08,0x08,0x80,0x08,0x08,0x08},//Address
-               {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80}//command
+  byte max7219_Top_Floor[2][33] = {
+               {0x06,0x06,0x06,0x06,0x06,0x06,0x06,0x06,         0x07,0x07,0x07,0x07,0x07,0x07,0x07,0x07,0x07,0x07,           0x08,0x08,0x08,0x08,0x80,0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x08},//Address
+               {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,         0x01,0x01,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x10,           0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x80,0x80,0x80}//command
                          };  
-  byte max7219_Bot_Floor[2][38] = {
-               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x04,0x04,0x04,0x04,0x04,0x04,0x04,0x05,0x05,0x05,0x05,0x05,0x05,0x05,},//Address
-               {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x10,0x20,0x40,0x80,0x01,0x02,0x04,0x08,0x10,0x20,0x40}//command
+  byte max7219_Bot_Floor[2][72] = {
+               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,   0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,   0x04,0x04,0x04,0x04,0x04,0x04,0x04,    0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05},//Address
+               {0x03,0x03,0x04,0x08,0x08,0x10,0x20,0x20,0xC0,0xC0,   0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,     0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
                        }; 
   Serial.println("max info:"); 
   Serial.println();
@@ -124,7 +120,7 @@ void max7219_Interface(int floor_Num, int index_Num)
     writeMAX7219(latchPin,clockPin,dataPin,max7219_Bot_Floor[0][index_Num],max7219_Bot_Floor[1][index_Num]);
     //writeMAX7219(latchPin,clockPin,dataPin,0x01,0x08);  
   }
-  else
+  else if(floor_Num ==2)
   {
       Serial.println(index_Num);
   Serial.println(max7219_Top_Floor[0][index_Num]);
@@ -132,55 +128,37 @@ void max7219_Interface(int floor_Num, int index_Num)
     writeMAX7219(latchPin,clockPin,dataPin,max7219_Top_Floor[0][index_Num],max7219_Top_Floor[1][index_Num]);
     //writeMAX7219(latchPin,clockPin,dataPin,max7219_Top_Floor[0][index_Num],max7219_Top_Floor[1][index_Num]);
   }
-
-
-}
-
-void segment_Sweep(){
-  for(byte Address = 0x01;Address<=0x04 ;Address++)
-  {//loop from address 1 to address 4, digits 0 through 3
-    for(byte Command = 0x01; Command<=0x80 && Command != 0x00;Command*=2) // after Command reaches 128, the next *=2 will cause and over flow and make command = 0x00
-    {//loop through all segments
-      writeMAX7219(latchPin,clockPin,dataPin,Address,Command);
-      delay(200);
-    }
-    writeMAX7219(latchPin,clockPin,dataPin,Address,0x00); //clears the last digit
-  }
-
-      writeMAX7219(latchPin,clockPin,dataPin,0x01,0x80);
-
-  delay(20000);
-  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x0C);
-  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x0B);
-  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x0D);
-  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x0E);
-  delay(1500);
-  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x0F); //clears all bits
-  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x0F); //for digit 0-3 / 1-4
-  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x0F);
-  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x0F);
-  while(true)
+  else if(room_Num == 555) //lights up all stairs
   {
-    writeMAX7219(latchPin,clockPin,dataPin,0x01,0x06);
-    writeMAX7219(latchPin,clockPin,dataPin,0x02,0x4F);
-    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x4F);
-    writeMAX7219(latchPin,clockPin,dataPin,0x04,0x4F);
+    writeMAX7219(latchPin,clockPin,dataPin,0x02,0x10);
+    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x10);
+    writeMAX7219(latchPin,clockPin,dataPin,0x06,0x10);
+    writeMAX7219(latchPin,clockPin,dataPin,0x08,0x04);
   }
+  else if(room_Num == 444)//lights up all restrooms
+  {
+    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x04);
+    writeMAX7219(latchPin,clockPin,dataPin,0x04,0x04);
+    writeMAX7219(latchPin,clockPin,dataPin,0x08,0x10);  
+  }
+  else if(room_Num == 666)//lights up all Elevators
+  {
+    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x20);
+    writeMAX7219(latchPin,clockPin,dataPin,0x08,0x08);
+  }
+
 }
+
 ///////////////////////////////////////////////////////////////////////
 void INIT_MAX7219(){
   writeMAX7219(latchPin,clockPin,dataPin,0x0C,0x00);//Shutdown mode while setting up config.
   writeMAX7219(latchPin,clockPin,dataPin,0x0A,0x04);//Midrange Brightness Mode
-  writeMAX7219(latchPin,clockPin,dataPin,0x0B,0x03);//scan only digits 0-3 i.e the ones we use
+  writeMAX7219(latchPin,clockPin,dataPin,0x0B,0x07);//scan only digits 0-7 i.e the ones we use
   writeMAX7219(latchPin,clockPin,dataPin,0x09,0x00);//No decode for all digits
-  writeMAX7219(latchPin,clockPin,dataPin,0x01,0x00);//Write BLANK to digit 3
-  writeMAX7219(latchPin,clockPin,dataPin,0x02,0x00);//Write BLANK to digit 2
-  writeMAX7219(latchPin,clockPin,dataPin,0x03,0x00);//Write BLANK to digit 1
-  writeMAX7219(latchPin,clockPin,dataPin,0x04,0x00);//Write BLANK to digit 0
-  writeMAX7219(latchPin,clockPin,dataPin,0x05,0x00);//Write BLANK to digit 3
-  writeMAX7219(latchPin,clockPin,dataPin,0x06,0x00);//Write BLANK to digit 2
-  writeMAX7219(latchPin,clockPin,dataPin,0x07,0x00);//Write BLANK to digit 1
-  writeMAX7219(latchPin,clockPin,dataPin,0x08,0x00);//Write BLANK to digit 0
+  for (int i = 0; i <= 8; i++)
+  {
+    writeMAX7219(latchPin,clockPin,dataPin,i,0x00);//Write BLANK to all digits
+  }
   writeMAX7219(latchPin,clockPin,dataPin,0x0C,0x01);//Normal mode
   }
 /////////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +298,8 @@ boolean roomExistance(int room_Num)
         found = true;  
       }
     }  
-  } else {
+  } else if (room_Num/100 == 1) 
+    {
       for(int i = 0; i < SIZE_OF_BOT_FLOOR; i++)
       {
         if(room_Num == bot_Floor_Structure[0][i])
@@ -329,6 +308,10 @@ boolean roomExistance(int room_Num)
           found = true;  
         }
       }  
+    }
+    else if(room_Num == 444 || room_Num == 555 || room_Num == 666)
+    {
+      found = true;  
     }
   return found;
 }
