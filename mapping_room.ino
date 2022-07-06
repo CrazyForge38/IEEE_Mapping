@@ -6,18 +6,21 @@
 // the link below will explain in detial how #define works
 //https://www.arduino.cc/reference/en/language/structure/further-syntax/define/
 
+  const byte interruptPin = 2;
+  volatile byte state = LOW;
+
 ///I hate to do this but Its easier as a global rn if i doont want to run through a n lenght for loop..
 static int index_Num = 0;
 ///
-
+////////////  555 == stairs     666 == elevators     444 == Restrooms               ////////////
 static int top_Floor_Structure[2][33] = {// initilazie the array only for the first run and can change throughout the program
-               {204, 203, 202, 201, 555, 240, 241, 242,   238, 239, 237, 221, 223, 226, 231, 233, 234, 236,     205, 214, 333, 444, 666, 220, 222, 224, 225, 227, 228, 229, 230, 232, 235}, //room number
+               {204, 203, 202, 201, 555, 240, 241, 242,   238, 239, 237, 221, 223, 226, 231, 233, 234, 236,     205, 214, 555, 666, 444, 220, 222, 224, 225, 227, 228, 229, 230, 232, 235}, //room number
                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count 
              }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
                 ////https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 
 static int bot_Floor_Structure[2][72] = {// initilazie the array only for the first run and can change throughout the program
-               {119, 119, 102, 101, 103, 555, 161, 162, 158, 158,        124,123,122,121,120,117,116,115,114,113,112,111,110,109,108,107,106,105,104,163,164,165,166,167,168,169,170,171,172,173,174,175, 156,      125, 126, 130, 128, 555, 444, 160, 159,        101, 137, 666, 140, 150, 154, 155,       132, 133, 555, 136, 139, 145, 146, 147, 148, 149, 151, 152, 153}, //room number
+               {124,123,122,121,120,117,116,115,114,113,112,111,110,109,108,107,106,105,104,163,164,165,166,167,168,169,170,171,172,173,174,175, 156,        119, 119, 102, 101, 103, 555, 161, 162, 158, 158,      125, 126, 130, 128, 555, 444, 160, 159,        100, 137, 444, 140, 150, 154, 155,       132, 133, 444, 136, 139, 145, 146, 147, 148, 149, 151, 152, 153}, //room number
                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count
              }; // I can get rid of the static bc of populate and store methods
 
@@ -31,7 +34,7 @@ char hexaKeys[ROWS][COLS] = { //keyboard selection
   {'*','0','#','D'}
  };
 byte rowPins[ROWS] = {9,8,7,6};//define the connections from the arduino
-byte colPins[COLS] = {5,4,3,2};
+byte colPins[COLS] = {5,4,3,1};
 Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
 const int SIZE_OF_TOP_FLOOR = sizeof(top_Floor_Structure[0])/sizeof(top_Floor_Structure[0][0]);
@@ -59,7 +62,7 @@ void setup() {
 }
 //////////////////////////////////////////////////////////
 void loop() 
-  {//////////////////////////////////////////////////////////////////
+  {//////////////////////////////////////////////////////////////////    
     String usrInput = ""; //the return of grabInput() is a string
     boolean handling = false;
     boolean room_Does_Exist = false;
@@ -69,6 +72,7 @@ void loop()
     //segment_Sweep();
     
     Serial.println("starting");
+    attachInterrupt(digitalPinToInterrupt(interruptPin), storeData, RISING);
     usrInput = grabInput(); //do we want to wait for the user to hit enter?
     floor_Num = usrInput.toInt()/100;
     room_Num = usrInput.toInt();
@@ -84,7 +88,7 @@ void loop()
       {
         Serial.println("the room does exist");
         incrementTally(room_Num, floor_Num);
-        Serial.println(index_Num);
+        //Serial.println(index_Num);
         max7219_Interface(floor_Num, index_Num, room_Num);
       } 
       else 
@@ -109,11 +113,11 @@ void max7219_Interface(int floor_Num, int index_Num, int room_Num)
                {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,         0x01,0x01,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x10,           0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x80,0x80,0x80}//command
                          };  
   byte max7219_Bot_Floor[2][72] = {
-               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,   0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,   0x04,0x04,0x04,0x04,0x04,0x04,0x04,    0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05},//Address
-               {0x03,0x03,0x04,0x08,0x08,0x10,0x20,0x20,0xC0,0xC0,   0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,     0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
+               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,  0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,      0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,   0x04,0x04,0x04,0x04,0x04,0x04,0x04,    0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05},//Address
+               {0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,  0x03,0x03,0x04,0x08,0x08,0x10,0x20,0x20,0xC0,0xC0,      0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
                        }; 
-  Serial.println("max info:"); 
-  Serial.println();
+  //Serial.println("max info:"); 
+  //Serial.println();
 
   if(floor_Num == 1)
   {
@@ -122,9 +126,9 @@ void max7219_Interface(int floor_Num, int index_Num, int room_Num)
   }
   else if(floor_Num ==2)
   {
-      Serial.println(index_Num);
-  Serial.println(max7219_Top_Floor[0][index_Num]);
-  Serial.println(max7219_Top_Floor[1][index_Num], HEX);
+  //Serial.println(index_Num);
+  //Serial.println(max7219_Top_Floor[0][index_Num]);
+  //Serial.println(max7219_Top_Floor[1][index_Num], HEX);
     writeMAX7219(latchPin,clockPin,dataPin,max7219_Top_Floor[0][index_Num],max7219_Top_Floor[1][index_Num]);
     //writeMAX7219(latchPin,clockPin,dataPin,max7219_Top_Floor[0][index_Num],max7219_Top_Floor[1][index_Num]);
   }
@@ -137,7 +141,7 @@ void max7219_Interface(int floor_Num, int index_Num, int room_Num)
   }
   else if(room_Num == 444)//lights up all restrooms
   {
-    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x04);
+    writeMAX7219(latchPin,clockPin,dataPin,0x05,0x04);
     writeMAX7219(latchPin,clockPin,dataPin,0x04,0x04);
     writeMAX7219(latchPin,clockPin,dataPin,0x08,0x10);  
   }
@@ -252,7 +256,7 @@ void incrementTally(int room_Num, int floor_Num)
           }  
         } 
     break;
-  }// I need a defaul, we will look into this later
+  }// I need a default, we will look into this later
 }
 ///////////////////////////////////////////////////////////////////
 String grabInput() //I could add a hit '' to enter the value
@@ -318,13 +322,20 @@ boolean roomExistance(int room_Num)
 ////////////////////////////////////////////////////////////////////
 void storeData()//I could make this a 2d array but too late atm
   {
+    Serial.println("testing interrupt mapping");
     for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
     {//i is the index incrementer and j is the starting address
+      Serial.println(bot_Floor_Structure[1][i]);
       EEPROM.write(j, bot_Floor_Structure[1][i]);  
     }
     for(int i = 0, j = topAddr; i < SIZE_OF_TOP_FLOOR ; i++, j++)
     {//i is the index incrementer and j is the starting address
+      Serial.println(top_Floor_Structure[1][i]);
       EEPROM.write(j, top_Floor_Structure[1][i]); 
+    }
+    for (int i = 0; i < 7; i++)
+    {
+      delay(3000);
     }
   }
 ////////////////////////////////////////////////////////////////////////////////
