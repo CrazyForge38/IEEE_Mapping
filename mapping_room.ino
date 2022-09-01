@@ -1,5 +1,8 @@
 #include <EEPROM.h> //arduino library
 #include <Keypad.h> //https://playground.arduino.cc/Code/Keypad/
+#include <Wire.h>
+#include <SparkFun_Alphanumeric_Display.h> //Click here to get the library: http://librarymanager/All#SparkFun_Qwiic_Alphanumeric_Display by SparkFun
+HT16K33 display;
 #define dataPin A2 // we first start by giving the name of our signals to better 
 #define latchPin A1 // refence then later on. Now we use the GPIO location to know  
 #define clockPin A0 // where the signals are coming out of the microcontroler 
@@ -12,15 +15,15 @@
 ///I hate to do this but Its easier as a global rn if i doont want to run through a n lenght for loop..
 static int index_Num = 0;
 ///
-////////////  555 == stairs     666 == elevators     444 == Restrooms               ////////////
+
 static int top_Floor_Structure[2][33] = {// initilazie the array only for the first run and can change throughout the program
-               {204, 203, 202, 201, 555, 240, 241, 242,   238, 239, 237, 221, 223, 226, 231, 233, 234, 236,     205, 214, 555, 666, 444, 220, 222, 224, 225, 227, 228, 229, 230, 232, 235}, //room number
+               {204, 203, 202, 201, 555, 240, 241, 242,   238, 239, 237, 221, 223, 226, 231, 233, 234, 236,     205, 214, 444, 555, 666, 220, 222, 224, 225, 227, 228, 229, 230, 232, 235}, //room number
                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count 
              }; //https://www.arduino.cc/reference/en/language/variables/variable-scope-qualifiers/static/
                 ////https://www.arduino.cc/reference/en/language/variables/utilities/sizeof/
 
 static int bot_Floor_Structure[2][72] = {// initilazie the array only for the first run and can change throughout the program
-               {124,123,122,121,120,117,116,115,114,113,112,111,110,109,108,107,106,105,104,163,164,165,166,167,168,169,170,171,172,173,174,175, 156,        119, 119, 102, 101, 103, 555, 161, 162, 158, 158,      125, 126, 130, 128, 555, 444, 160, 159,        100, 137, 444, 140, 150, 154, 155,       132, 133, 444, 136, 139, 145, 146, 147, 148, 149, 151, 152, 153}, //room number
+               {124,123,122,121,120,117,116,115,114,113,112,111,110,109,108,107,106,105,104,163,164,165,166,167,168,169,170,171,172,173,174,175, 156,        119, 119, 102, 101, 103, 555, 161, 162, 158, 158,      125, 126, 130, 128, 555, 444, 160, 159,        100, 137, 666, 140, 150, 154, 155,       132, 133, 555, 136, 139, 145, 146, 147, 148, 149, 151, 152, 153}, //room number
                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count
              }; // I can get rid of the static bc of populate and store methods
 
@@ -54,6 +57,15 @@ void setup() {
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
+
+  Wire.begin(); //Join I2C bus
+
+  if (display.begin() == false)
+  {
+    Serial.println("Device did not acknowledge! Freezing.");
+    while (1);
+  }
+  
   INIT_MAX7219();
 
   //RESET_EEPROM(); //Call this method, comment it out after, and then run the program for inital implementation
@@ -72,7 +84,7 @@ void loop()
     //segment_Sweep();
     
     Serial.println("starting");
-    attachInterrupt(digitalPinToInterrupt(interruptPin), storeData, RISING);
+    //attachInterrupt(digitalPinToInterrupt(interruptPin), storeData, RISING);
     usrInput = grabInput(); //do we want to wait for the user to hit enter?
     floor_Num = usrInput.toInt()/100;
     room_Num = usrInput.toInt();
@@ -81,6 +93,7 @@ void loop()
     if (handling == 0)//accepted access code 0 == false
     {
       usrReadout();
+      handling = 1;
     }
     else //not access code therefore it a room number
     {
@@ -88,15 +101,18 @@ void loop()
       {
         Serial.println("the room does exist");
         incrementTally(room_Num, floor_Num);
-        //Serial.println(index_Num);
+        display.print(room_Num);
+        //Serial.println(room_Num);
         max7219_Interface(floor_Num, index_Num, room_Num);
       } 
       else 
       {
+        display.print("RDNE");
         Serial.println("room does not exist");
       } 
     }
     //storeData();
+    delay(2400);
     Serial.println("This is the end of this run");
   }/////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -113,8 +129,8 @@ void max7219_Interface(int floor_Num, int index_Num, int room_Num)
                {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,         0x01,0x01,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x10,           0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x80,0x80,0x80}//command
                          };  
   byte max7219_Bot_Floor[2][72] = {
-               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,  0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,      0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,   0x04,0x04,0x04,0x04,0x04,0x04,0x04,    0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05},//Address
-               {0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,  0x03,0x03,0x04,0x08,0x08,0x10,0x20,0x20,0xC0,0xC0,      0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
+               {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,   0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,   0x04,0x04,0x04,0x04,0x04,0x04,0x04,    0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05},//Address
+               {0x03,0x03,0x04,0x08,0x08,0x10,0x20,0x20,0xC0,0xC0,   0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,     0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
                        }; 
   //Serial.println("max info:"); 
   //Serial.println();
@@ -141,7 +157,7 @@ void max7219_Interface(int floor_Num, int index_Num, int room_Num)
   }
   else if(room_Num == 444)//lights up all restrooms
   {
-    writeMAX7219(latchPin,clockPin,dataPin,0x05,0x04);
+    writeMAX7219(latchPin,clockPin,dataPin,0x03,0x20);
     writeMAX7219(latchPin,clockPin,dataPin,0x04,0x04);
     writeMAX7219(latchPin,clockPin,dataPin,0x08,0x10);  
   }
@@ -203,7 +219,8 @@ void usrReadout()//selecting the room to read the tally count
   int room_Num = usrInput.toInt();
   if (roomExistance(room_Num) == true)
     {
-      printTally(room_Num, floor_Num);  
+      printTally(room_Num, floor_Num); 
+      display.print(room_Num);
     }
 }
 ////////////////////////////////////////////////////////////////////
@@ -215,7 +232,9 @@ void printTally(int room_Num, int floor_Num)
     {
       if (room_Num == bot_Floor_Structure[0][i])
       {
-        Serial.println(bot_Floor_Structure[1][i]);  
+        Serial.println(bot_Floor_Structure[1][i]); 
+        display.print(bot_Floor_Structure[1][i]);
+        delay(2300);  
       }  
     }  
   }
@@ -225,7 +244,9 @@ void printTally(int room_Num, int floor_Num)
     {
       if (room_Num == top_Floor_Structure[0][i])
       {
-        Serial.println(top_Floor_Structure[1][i]);  
+        Serial.println(top_Floor_Structure[0][i]);
+        display.print(top_Floor_Structure[0][i]);  
+        delay(2300);
       }  
     } 
   }
@@ -242,6 +263,8 @@ void incrementTally(int room_Num, int floor_Num)
         {
           bot_Floor_Structure[1][i] = bot_Floor_Structure[1][i]+1;
           Serial.println(bot_Floor_Structure[1][i]);
+          //display.print(bot_Floor_Structure[1][i]);
+          //delay(2300);
         }  
       } 
     break;
@@ -253,6 +276,8 @@ void incrementTally(int room_Num, int floor_Num)
           {
             top_Floor_Structure[1][i] = top_Floor_Structure[1][i]+1;
             Serial.println(top_Floor_Structure[1][i]);
+            //display.print(bot_Floor_Structure[1][i]);
+            //delay(2300);
           }  
         } 
     break;
@@ -261,6 +286,7 @@ void incrementTally(int room_Num, int floor_Num)
 ///////////////////////////////////////////////////////////////////
 String grabInput() //I could add a hit '' to enter the value
 {
+  display.print("EARN");
   char char_ ;
   String usrInput = "";
   for (int i = 0; i < 3; i++)
@@ -281,6 +307,8 @@ boolean inputDestination(String input)// 1 == true and 0 == false
   if(argument == ACCESS_CODE)// get ride of a if by making the lightroom() default
   {
     Serial.println("code accepted");
+    display.print("ACA");
+    delay(2300);
     destination = false;  
   }
 
@@ -325,7 +353,7 @@ void storeData()//I could make this a 2d array but too late atm
     Serial.println("testing interrupt mapping");
     for(int i = 0, j = botAddr; i < SIZE_OF_BOT_FLOOR ; i++, j++)
     {//i is the index incrementer and j is the starting address
-      Serial.println(bot_Floor_Structure[1][i]);
+      //Serial.println(bot_Floor_Structure[1][i]);
       EEPROM.write(j, bot_Floor_Structure[1][i]);  
     }
     for(int i = 0, j = topAddr; i < SIZE_OF_TOP_FLOOR ; i++, j++)
