@@ -1,5 +1,9 @@
 #include <EEPROM.h> //arduino library
 #include <Keypad.h> //https://playground.arduino.cc/Code/Keypad/
+#include <Wire.h>
+#include <SparkFun_Alphanumeric_Display.h> //Click here to get the library: http://librarymanager/All#SparkFun_Qwiic_Alphanumeric_Display by SparkFun
+#include <SparkFun_Qwiic_Keypad_Arduino_Library.h>
+HT16K33 display;
 #define dataPin A2 // we first start by giving the name of our signals to better 
 #define latchPin A1 // refence then later on. Now we use the GPIO location to know  
 #define clockPin A0 // where the signals are coming out of the microcontroler 
@@ -23,7 +27,9 @@ static int bot_Floor_Structure[2][72] = {// initilazie the array only for the fi
                {124,123,122,121,120,117,116,115,114,113,112,111,110,109,108,107,106,105,104,163,164,165,166,167,168,169,170,171,172,173,174,175, 156,        119, 119, 102, 101, 103, 555, 161, 162, 158, 158,      125, 126, 130, 128, 555, 444, 160, 159,        100, 137, 666, 140, 150, 154, 155,       132, 133, 555, 136, 139, 145, 146, 147, 148, 149, 151, 152, 153}, //room number
                {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //tally count
              }; // I can get rid of the static bc of populate and store methods
-
+KEYPAD keypad1; //Create instance of this object
+char button = 0; //Button '0' to '9' and '*' and '#'
+unsigned long timeSincePressed = 0; //Number of milliseconds since this button was pressed
 const byte ROWS = 4; //Defines the number of rows and columns
 const byte COLS = 4;
 char waitForKey(); //sets up the waitforkey for the keypad
@@ -54,15 +60,40 @@ void setup() {
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
+
+  Wire.begin(); //Join I2C bus
+
+  if (display.begin() == false)
+  {
+    Serial.println("Device did not acknowledge! Freezing.");
+    while (1);
+  }
+  
   INIT_MAX7219();
+  display.setBrightness(7);
 
   //RESET_EEPROM(); //Call this method, comment it out after, and then run the program for inital implementation
   
-  populateTally();
+  populateTally(); 
+  
+  Serial.println("Qwiic KeyPad Example");//////////////////////// some of this is not needed
+
+  if (keypad1.begin() == false)   // Note, using begin() like this will use default I2C address, 0x4B. 
+                  // You can pass begin() a different address like so: keypad1.begin(Wire, 0x4A).
+  {
+    Serial.println("Keypad does not appear to be connected. Please check wiring. Freezing...");
+    while (1);
+  }
+  Serial.print("Initialized. Firmware Version: "); //this stuff isnt
+  Serial.println(keypad1.getVersion());
+  Serial.println("Press a button: * to do a space. # to go to next line.");//////////////////////////
 }
 //////////////////////////////////////////////////////////
 void loop() 
-  {//////////////////////////////////////////////////////////////////    
+  {//////////////////////////////////////////////////////////////////   
+    keypad1.updateFIFO();  // necessary for keypad to pull button from stack to readable register
+    button = keypad1.getButton();
+    //timeSincePressed = keypad1.getTimeSincePressed(); 
     String usrInput = ""; //the return of grabInput() is a string
     boolean handling = false;
     boolean room_Does_Exist = false;
@@ -70,9 +101,9 @@ void loop()
     int room_Num = 0;
     //writeMAX7219(latchPin,clockPin,dataPin,0x06,0x01);
     //segment_Sweep();
-    
+
     Serial.println("starting");
-    attachInterrupt(digitalPinToInterrupt(interruptPin), storeData, RISING);
+    //attachInterrupt(digitalPinToInterrupt(interruptPin), storeData, RISING); ///// interrupt
     usrInput = grabInput(); //do we want to wait for the user to hit enter?
     floor_Num = usrInput.toInt()/100;
     room_Num = usrInput.toInt();
@@ -81,6 +112,7 @@ void loop()
     if (handling == 0)//accepted access code 0 == false
     {
       usrReadout();
+      handling = 1;
     }
     else //not access code therefore it a room number
     {
@@ -88,16 +120,21 @@ void loop()
       {
         Serial.println("the room does exist");
         incrementTally(room_Num, floor_Num);
-        //Serial.println(index_Num);
+        display.print(room_Num);
+        //Serial.println(room_Num);
         max7219_Interface(floor_Num, index_Num, room_Num);
       } 
       else 
       {
+        String RDNE = "Room does not exist";
+        scroll_Text(RDNE);
+        display.print("RDNE");
         Serial.println("room does not exist");
       } 
     }
     //storeData();
-    Serial.println("This is the end of this run");
+    delay(2300);
+    Serial.println("This is the end of this run"); 
   }/////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 
@@ -114,7 +151,7 @@ void max7219_Interface(int floor_Num, int index_Num, int room_Num)
                          };  
   byte max7219_Bot_Floor[2][72] = {
                {0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,   0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,0x02,     0x03,0x03,0x03,0x03,0x03,0x03,0x03,0x03,   0x04,0x04,0x04,0x04,0x04,0x04,0x04,    0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05,0x05},//Address
-               {0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,     0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
+               {0x03,0x03,0x04,0x08,0x08,0x10,0x20,0x20,0xC0,0xC0,   0x01,0x01,0x01,0x01,0x01,0x02,0x02,0x02,0x02,0x02,0x04,0x04,0x04,0x04,0x04,0x08,0x08,0x08,0x08,0x10,0x10,0x10,0x10,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40,0x80,     0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,   0x01,0x02,0x04,0x08,0x10,0x20,0x40,    0x01,0x02,0x04,0x08,0x10,0x20,0x20,0x20,0x20,0x40,0x40,0x40,0x40}//command
                        }; 
   //Serial.println("max info:"); 
   //Serial.println();
@@ -166,8 +203,7 @@ void INIT_MAX7219(){
   writeMAX7219(latchPin,clockPin,dataPin,0x0C,0x01);//Normal mode
   }
 /////////////////////////////////////////////////////////////////////////////////////
-void writeMAX7219(int LATCH,int CLOCK,int DATA,byte Address,byte Command){ //could we get ruf og LATCH and Clock bc they are global? 
-  //only one thing uses it at a time, even with threading.. i think
+void writeMAX7219(int LATCH,int CLOCK,int DATA,byte Address,byte Command){ //could we get rid of LATCH and Clock bc they are global? 
   digitalWrite(LATCH, LOW);//the chip admits data when latch is set to low
   digitalWrite(CLOCK, LOW);//the chip stores data on the rising clock edge
   //https://www.arduino.cc/reference/en/language/functions/digital-io/digitalwrite/
@@ -203,7 +239,8 @@ void usrReadout()//selecting the room to read the tally count
   int room_Num = usrInput.toInt();
   if (roomExistance(room_Num) == true)
     {
-      printTally(room_Num, floor_Num);  
+      printTally(room_Num, floor_Num); 
+      display.print(room_Num);
     }
 }
 ////////////////////////////////////////////////////////////////////
@@ -215,7 +252,9 @@ void printTally(int room_Num, int floor_Num)
     {
       if (room_Num == bot_Floor_Structure[0][i])
       {
-        Serial.println(bot_Floor_Structure[1][i]);  
+        Serial.println(bot_Floor_Structure[1][i]); 
+        display.print(bot_Floor_Structure[1][i]);
+        delay(2300);  
       }  
     }  
   }
@@ -225,7 +264,9 @@ void printTally(int room_Num, int floor_Num)
     {
       if (room_Num == top_Floor_Structure[0][i])
       {
-        Serial.println(top_Floor_Structure[1][i]);  
+        Serial.println(top_Floor_Structure[0][i]);
+        display.print(top_Floor_Structure[0][i]);  
+        delay(2300);
       }  
     } 
   }
@@ -242,6 +283,8 @@ void incrementTally(int room_Num, int floor_Num)
         {
           bot_Floor_Structure[1][i] = bot_Floor_Structure[1][i]+1;
           Serial.println(bot_Floor_Structure[1][i]);
+          //display.print(bot_Floor_Structure[1][i]);
+          //delay(2300);
         }  
       } 
     break;
@@ -253,23 +296,58 @@ void incrementTally(int room_Num, int floor_Num)
           {
             top_Floor_Structure[1][i] = top_Floor_Structure[1][i]+1;
             Serial.println(top_Floor_Structure[1][i]);
+            //display.print(bot_Floor_Structure[1][i]);
+            //delay(2300);
           }  
         } 
     break;
   }// I need a default, we will look into this later
 }
 ///////////////////////////////////////////////////////////////////
-String grabInput() //I could add a hit '' to enter the value
-{
-  char char_ ;
-  String usrInput = "";
-  for (int i = 0; i < 3; i++)
+String grabInput() 
+{/////////////////////////////////////// using the keypad
+  String EARN = "Enter a room number";
+  scroll_Text(EARN);
+  //display.shiftLeft(grab_Input); //if this does not work, we will do a method called scroll text
+  keypad1.updateFIFO();
+  display.print("EARN");
+  char char_ = keypad1.getButton();
+  int button_Count = 0;
+  String Buffer = "";
+  
+  while(button_Count < 3) { //interrupt could be used to 
+    if(char_ != 0) { // if we read a input
+      button_Count++; //increment input size
+      Buffer.concat(char_); //append to string
+      Serial.println(button_Count); //print buffer size 
+      delay(25);
+    }
+    Serial.println(Buffer);//prints buffer
+  }
+  
+  /*for (int i = 0; i < 3; i++) //what i originally had for the row scanning
   {
     char_ = customKeypad.waitForKey();
     Serial.println(char_);
     usrInput.concat(char_);
-  }
-  return usrInput;
+  }*/
+  return Buffer;
+}
+///////////////////////////////////////////////////////////////////////
+void scroll_Text (String text)
+{
+  String string_Spaces = "    ";
+  String text_Cat = ""; 
+  int size_Count;
+
+   text.concat(string_Spaces);
+   string_Spaces.concat(text);
+   size_Count = string_Spaces.length();
+   
+   for (int i = 0; i < (size_Count-4); i++) {
+     display.print(string_Spaces.substring(i, i+3));
+     delay(350); //idk if this is a good time
+   }
 }
 ////////////////////////////////////////////////////////////////////////
 boolean inputDestination(String input)// 1 == true and 0 == false
@@ -281,6 +359,10 @@ boolean inputDestination(String input)// 1 == true and 0 == false
   if(argument == ACCESS_CODE)// get ride of a if by making the lightroom() default
   {
     Serial.println("code accepted");
+    String ACA = "Access code accepted";
+    scroll_Text(RDNE);
+    display.print("ACA");
+    delay(2300);
     destination = false;  
   }
 
@@ -333,10 +415,10 @@ void storeData()//I could make this a 2d array but too late atm
       Serial.println(top_Floor_Structure[1][i]);
       EEPROM.write(j, top_Floor_Structure[1][i]); 
     }
-    for (int i = 0; i < 7; i++)
-    {
-      delay(3000);
-    }
+    //for (int i = 0; i < 7; i++)
+    //{
+      //delay(3000);
+    //}   //not sure why i had this but it was in my last push
   }
 ////////////////////////////////////////////////////////////////////////////////
 void populateTally() //when the prom is started, we need to fill in the data
